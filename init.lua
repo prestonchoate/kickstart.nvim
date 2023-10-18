@@ -431,7 +431,7 @@ end
 local servers = {
   clangd = {},
   gopls = {},
-  -- pyright = {},
+  phpactor = {},
   rust_analyzer = {},
   tsserver = {
     settings = { documentFormatting = true }
