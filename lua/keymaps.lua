@@ -11,7 +11,11 @@ vim.keymap.set('n', '<A-i>', ':terminal<CR>', { desc = 'Open new terminal buffer
 -- Close current buffer keymap
 vim.keymap.set('n', '<leader>x', ':bd<CR>', { desc = 'Close current buffer' })
 
-vim.keymap.set('n', '<leader>tc', ':Telescope colorscheme<CR>', { desc = 'Change colorscheme' })
+vim.keymap.set('n', '<leader>cc', ':Telescope colorscheme<CR>', { desc = 'Change colorscheme' })
+
+vim.keymap.set('n', '<leader>tt', function()
+  require("trouble").toggle("diagnostics")
+end, { desc = 'Toggle Trouble' })
 
 vim.opt.number = true
 vim.opt.relativenumber = true

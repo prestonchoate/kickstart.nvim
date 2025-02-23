@@ -6,9 +6,4 @@ return {
     -- or leave it empty to use the default settings
     -- refer to the configuration section below
   },
-  config = function()
-    vim.keymap.set("n", "<leader>tt", function()
-      require("trouble").toggle()
-    end)
-  end,
 }
