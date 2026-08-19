@@ -98,8 +98,22 @@ do
   vim.g.mapleader = ' '
   vim.g.maplocalleader = ' '
 
+  -- GUI terminals often launch Neovim without a login shell, so tools installed
+  -- outside standard paths (e.g. /opt/odin) may be missing from PATH.
+  local function prepend_to_path(dir)
+    if not dir or vim.uv.fs_stat(dir) == nil then
+      return
+    end
+    local path = vim.env.PATH or ''
+    if not path:find(dir, 1, true) then
+      vim.env.PATH = dir .. ':' .. path
+    end
+  end
+  prepend_to_path '/opt/odin'
+  prepend_to_path(vim.fn.stdpath 'data' .. '/mason/bin')
+
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -313,6 +327,12 @@ do
       if name == 'nvim-treesitter' then
         if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
         vim.cmd 'TSUpdate'
+        return
+      end
+
+      if name == 'markdown-preview.nvim' then
+        if not ev.data.active then vim.cmd.packadd 'markdown-preview.nvim' end
+        vim.fn['mkdp#util#install']()
         return
       end
     end,
@@ -690,10 +710,20 @@ do
   -- Enable the following language servers
   --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
   --  See `:help lsp-config` for information about keys and how to configure
+  local function odin_executable()
+    if vim.fn.executable 'odin' == 1 then
+      return vim.fn.exepath 'odin'
+    end
+    local fallback = '/opt/odin/odin'
+    if vim.uv.fs_stat(fallback) then
+      return fallback
+    end
+  end
+
   ---@type table<string, vim.lsp.Config>
   local servers = {
     -- clangd = {},
-    -- gopls = {},
+    gopls = {},
     -- pyright = {},
     -- rust_analyzer = {},
     --
@@ -701,7 +731,21 @@ do
     --    https://github.com/pmizio/typescript-tools.nvim
     --
     -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
+    ts_ls = {},
+    phpactor = {},
+    elixirls = {},
+    -- Odin Language Server (also installs odinfmt via Mason)
+    ols = {
+      init_options = {
+        odin_command = odin_executable(),
+        enable_format = true,
+        enable_hover = true,
+        enable_snippets = true,
+        enable_procedure_snippet = true,
+        enable_auto_import = true,
+        enable_code_action_invert_if = true,
+      },
+    },
 
     stylua = {}, -- Used to format Lua code
 
@@ -783,22 +827,28 @@ do
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
-      -- You can specify filetypes to autoformat on save here:
-      local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
-      }
-      if enabled_filetypes[vim.bo[bufnr].filetype] then
-        return { timeout_ms = 500 }
-      else
+      -- Disable format_on_save for languages that don't have a well standardized coding style.
+      local disable_filetypes = { c = true, cpp = true }
+      if disable_filetypes[vim.bo[bufnr].filetype] then
         return nil
       end
+      return { timeout_ms = 500 }
     end,
     default_format_opts = {
       lsp_format = 'fallback', -- Use external formatters if configured below, otherwise use LSP formatting. Set to `false` to disable LSP formatting entirely.
     },
+    formatters = {
+      -- Odinfmt defaults to stdout; tell it to read the buffer from stdin.
+      odinfmt = {
+        command = 'odinfmt',
+        args = { '-stdin' },
+        stdin = true,
+      },
+    },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
+      lua = { 'stylua' },
+      odin = { 'odinfmt' },
       -- rust = { 'rustfmt' },
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },
@@ -855,7 +905,7 @@ do
       -- <c-k>: Toggle signature help
       --
       -- See `:help blink-cmp-config-keymap` for defining your own keymap
-      preset = 'default',
+      preset = 'enter',
 
       -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
       --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -907,7 +957,7 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = { 'bash', 'c', 'diff', 'go', 'gomod', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'odin', 'php', 'query', 'vim', 'vimdoc' }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
@@ -969,7 +1019,7 @@ do
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug'
+  require 'kickstart.plugins.debug'
   -- require 'kickstart.plugins.indent_line'
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'
@@ -979,8 +1029,11 @@ do
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- require 'custom.plugins'
+  require 'custom.plugins'
 end
+
+require 'keymaps'
+require 'colorscheme'
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
