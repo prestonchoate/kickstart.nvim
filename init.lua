@@ -725,7 +725,7 @@ do
 
   ---@type table<string, vim.lsp.Config>
   local servers = {
-    -- clangd = {},
+    clangd = {},
     gopls = {},
     -- pyright = {},
     -- rust_analyzer = {},
@@ -818,6 +818,16 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
+  -- GDScript: kept out of `servers` above on purpose. There's no standalone
+  -- server binary for Mason to install, the "server" is the Godot editor
+  -- itself (Editor Settings > Network > Language Server, on by default at
+  -- 127.0.0.1:6005). nvim-lspconfig's shipped default (lsp/gdscript.lua)
+  -- already connects to that port and sets `project.godot` as a root marker,
+  -- so no override is needed here. The Godot editor must be open for this
+  -- to connect to anything.
+  vim.lsp.config('gdscript', {})
+  vim.lsp.enable('gdscript')
 end
 
 -- ============================================================
@@ -960,7 +970,8 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'go', 'gomod', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'odin', 'php', 'query', 'vim', 'vimdoc' }
+  local parsers =
+    { 'bash', 'c', 'diff', 'gdscript', 'go', 'gomod', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'odin', 'php', 'query', 'vim', 'vimdoc' }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
